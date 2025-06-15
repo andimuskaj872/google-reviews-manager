@@ -5,10 +5,13 @@ A Node.js application to manage Google My Business reviews - fetch, respond, sum
 ## Features
 
 - 🔍 Fetch Google My Business reviews via API
-- 💬 Generate AI-powered responses to reviews
+- 💬 Generate AI-powered responses to reviews using Claude
 - 📊 Summarize reviews with key insights
 - 📱 Send SMS notifications with review summaries
 - 🤖 Auto-reply to reviews with personalized responses
+- ⏰ Daily automated review workflow at 9 PM NY time
+- 💬 SMS-based confirmation system for review replies
+- 🎯 Casual, humble response style with customer first names
 
 ## Setup
 
@@ -28,8 +31,8 @@ A Node.js application to manage Google My Business reviews - fetch, respond, sum
    - Create OAuth 2.0 credentials
    - Add your redirect URI: `http://localhost:3000/auth/callback`
 
-4. **OpenAI API Setup:**
-   - Get API key from [OpenAI](https://platform.openai.com/)
+4. **Claude API Setup:**
+   - Get API key from [Anthropic Console](https://console.anthropic.com/)
    - Add to `.env` file
 
 5. **Twilio SMS Setup:**
@@ -56,6 +59,16 @@ A Node.js application to manage Google My Business reviews - fetch, respond, sum
    - `POST /reviews/:reviewId/reply` - Reply to a specific review
    - `POST /reviews/:reviewId/generate-reply` - Generate AI reply suggestion
    - `POST /sms/send` - Send custom SMS message
+   - `POST /daily-workflow` - Manually trigger daily review workflow
+   - `POST /sms/webhook` - Twilio webhook for SMS responses
+
+## Daily Automation
+
+The app automatically runs every day at 9 PM NY time to:
+1. Send you a review summary via SMS
+2. Prompt you to reply to each review individually
+3. Generate casual, humble responses for approval
+4. Submit replies only after SMS confirmation
 
 ## Environment Variables
 
@@ -67,8 +80,8 @@ GOOGLE_REDIRECT_URI=http://localhost:3000/auth/callback
 GOOGLE_REFRESH_TOKEN=your_refresh_token
 LOCATION_ID=your_business_location_id
 
-# OpenAI API
-OPENAI_API_KEY=your_openai_api_key
+# Claude API
+ANTHROPIC_API_KEY=your_anthropic_api_key
 
 # Twilio SMS
 TWILIO_ACCOUNT_SID=your_account_sid
