@@ -59,10 +59,23 @@ class GoogleBusinessClient {
       
       // Ensure we have a fresh access token
       console.log('Getting fresh access token...');
-      await this.oauth2Client.getAccessToken();
+      try {
+        await this.oauth2Client.getAccessToken();
+        console.log('Access token obtained successfully');
+        console.log('Token type:', this.oauth2Client.credentials.token_type);
+        console.log('Has access token:', !!this.oauth2Client.credentials.access_token);
+      } catch (tokenError) {
+        console.error('Token refresh failed:', tokenError.message);
+        throw new Error(`Authentication failed: ${tokenError.message}`);
+      }
       
       // Use the Business Information API to get location data including reviews
       console.log('Making API call to locations.get with readMask=reviews...');
+      
+      console.log('API call parameters:');
+      console.log('- Location name:', `locations/${this.locationId}`);
+      console.log('- ReadMask:', 'reviews');
+      console.log('- Auth client configured:', !!this.oauth2Client);
       
       const apiCall = this.businessInfo.locations.get({
         name: `locations/${this.locationId}`,
@@ -83,7 +96,11 @@ class GoogleBusinessClient {
       return reviews;
       
     } catch (error) {
-      console.error('Business Information API error:', error.message);
+      console.error('Business Information API error details:');
+      console.error('- Error message:', error.message);
+      console.error('- Error code:', error.code);
+      console.error('- Error status:', error.status);
+      console.error('- Full error:', JSON.stringify(error, null, 2));
       
       // Handle specific error types
       if (error.message.includes('timeout')) {
@@ -94,7 +111,8 @@ class GoogleBusinessClient {
         throw new Error('API quota exceeded - please wait a few minutes before trying again');
       }
       
-      throw error;
+      // Return more detailed error
+      throw new Error(`API call failed: ${error.message} (code: ${error.code}, status: ${error.status})`);
     }
   }
 
