@@ -41,12 +41,12 @@ class GoogleBusinessClient {
     return tokens;
   }
 
-  async getReviews() {
+  async getReviews(sinceTimestamp = null) {
     try {
       // Use mock data if specified
       if (process.env.USE_MOCK_DATA === 'true') {
         console.log('Using mock data for testing');
-        return this.getMockReviews();
+        return this.getMockReviews(sinceTimestamp);
       }
 
       // Fetch real reviews from Google My Business API
@@ -62,8 +62,18 @@ class GoogleBusinessClient {
       const allReviews = response.data.reviews || [];
       console.log(`Fetched ${allReviews.length} total reviews from Google My Business`);
       
+      // Filter by timestamp if provided (for new reviews since last run)
+      let filteredReviews = allReviews;
+      if (sinceTimestamp) {
+        filteredReviews = allReviews.filter(review => {
+          const reviewDate = new Date(review.createTime);
+          return reviewDate > sinceTimestamp;
+        });
+        console.log(`${filteredReviews.length} reviews since ${sinceTimestamp.toISOString()}`);
+      }
+      
       // Filter out reviews that already have replies (unless they're very recent)
-      const unrepliedReviews = allReviews.filter(review => {
+      const unrepliedReviews = filteredReviews.filter(review => {
         // Include if no reply exists
         if (!review.reviewReply) {
           return true;
@@ -78,7 +88,11 @@ class GoogleBusinessClient {
         return isVeryRecent;
       });
       
-      console.log(`${unrepliedReviews.length} reviews need attention (${allReviews.length - unrepliedReviews.length} already replied)`);
+      if (sinceTimestamp) {
+        console.log(`${unrepliedReviews.length} new reviews need attention since last check`);
+      } else {
+        console.log(`${unrepliedReviews.length} reviews need attention (${allReviews.length - unrepliedReviews.length} already replied)`);
+      }
       
       // Transform the data to ensure consistent format
       return unrepliedReviews.map(review => ({
@@ -100,7 +114,7 @@ class GoogleBusinessClient {
       
       // If API fails, fall back to mock data with warning
       console.warn('Falling back to mock data due to API error');
-      return this.getMockReviews();
+      return this.getMockReviews(sinceTimestamp);
     }
   }
 
@@ -140,30 +154,40 @@ class GoogleBusinessClient {
     }
   }
 
-  getMockReviews() {
-    return [
+  getMockReviews(sinceTimestamp = null) {
+    const allMockReviews = [
       {
         name: 'accounts/123/locations/456/reviews/review1',
         starRating: 5,
         comment: 'Amazing Chinese food! The Beijing duck was perfectly cooked and the service was excellent. Will definitely come back!',
-        createTime: '2024-01-15T10:30:00Z',
+        createTime: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
         reviewer: { displayName: 'John D.' }
       },
       {
         name: 'accounts/123/locations/456/reviews/review2', 
         starRating: 4,
         comment: 'Good food but the wait time was a bit long. The dumplings were delicious though.',
-        createTime: '2024-01-10T19:45:00Z',
+        createTime: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
         reviewer: { displayName: 'Sarah M.' }
       },
       {
         name: 'accounts/123/locations/456/reviews/review3',
         starRating: 5,
         comment: 'Best Chinese restaurant in the area! Fresh ingredients and authentic flavors.',
-        createTime: '2024-01-08T14:20:00Z',
+        createTime: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
         reviewer: { displayName: 'Mike R.' }
       }
     ];
+
+    // Filter by timestamp if provided
+    if (sinceTimestamp) {
+      return allMockReviews.filter(review => {
+        const reviewDate = new Date(review.createTime);
+        return reviewDate > sinceTimestamp;
+      });
+    }
+
+    return allMockReviews;
   }
 
   async replyToReview(reviewName, replyText) {

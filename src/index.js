@@ -1,5 +1,7 @@
 import express from 'express';
 import cron from 'node-cron';
+import fs from 'fs/promises';
+import path from 'path';
 import GoogleBusinessClient from './google-business-client.js';
 import ReviewSummarizer from './review-summarizer.js';
 import SMSNotifier from './sms-notifier.js';
@@ -20,36 +22,75 @@ const pendingReplies = new Map();
 let dailyReviews = [];
 let currentReviewIndex = 0;
 
+// Timestamp tracking
+const TIMESTAMP_FILE = '/tmp/last-review-check.json';
+
+async function getLastCheckTimestamp() {
+  try {
+    const data = await fs.readFile(TIMESTAMP_FILE, 'utf8');
+    const parsed = JSON.parse(data);
+    return new Date(parsed.timestamp);
+  } catch (error) {
+    console.log('No previous timestamp found, treating as first run');
+    return null;
+  }
+}
+
+async function saveLastCheckTimestamp() {
+  const timestamp = new Date().toISOString();
+  try {
+    await fs.writeFile(TIMESTAMP_FILE, JSON.stringify({ timestamp }));
+    console.log('Saved timestamp for next check:', timestamp);
+  } catch (error) {
+    console.error('Error saving timestamp:', error);
+  }
+}
+
 // Daily review workflow function
 async function runDailyReviewWorkflow() {
   try {
     console.log('Starting daily review workflow...');
     
-    // Get all reviews for summary
-    const allReviews = await googleClient.getAllReviews();
+    // Get timestamp of last check
+    const lastCheckTime = await getLastCheckTimestamp();
     
-    // Get only unreplied reviews for individual processing
-    const unrepliedReviews = await googleClient.getReviews();
+    if (lastCheckTime) {
+      console.log('Last check was at:', lastCheckTime.toISOString());
+    } else {
+      console.log('First time running - will check all recent reviews');
+    }
     
-    if (allReviews.length === 0) {
-      await smsNotifier.sendCustomMessage('📊 Daily Review Update: No reviews found!');
+    // Get only new reviews since last check
+    const newReviews = await googleClient.getReviews(lastCheckTime);
+    
+    if (newReviews.length === 0) {
+      const timeStr = lastCheckTime ? 
+        `since ${lastCheckTime.toLocaleDateString()} ${lastCheckTime.toLocaleTimeString()}` : 
+        'today';
+      
+      await smsNotifier.sendCustomMessage(`📊 Daily Review Update: No new reviews ${timeStr}. Your business is all caught up! 👍`);
+      
+      // Save timestamp even when no new reviews
+      await saveLastCheckTimestamp();
       return;
     }
     
-    // Send summary of ALL reviews first
-    const summary = await reviewSummarizer.summarizeReviews(allReviews);
-    await smsNotifier.sendReviewSummary(summary);
+    // Send summary of NEW reviews only
+    const summary = await reviewSummarizer.summarizeReviews(newReviews);
+    const timeStr = lastCheckTime ? 
+      `since ${lastCheckTime.toLocaleDateString()}` : 
+      'recent';
+      
+    await smsNotifier.sendCustomMessage(`📊 New Reviews Summary (${timeStr}):\n\n${summary}`);
     
-    if (unrepliedReviews.length === 0) {
-      await smsNotifier.sendCustomMessage('✅ All reviews have been replied to! No action needed.');
-      return;
-    }
-    
-    // Store only unreplied reviews for individual processing
-    dailyReviews = unrepliedReviews;
+    // Store new reviews for individual processing
+    dailyReviews = newReviews;
     currentReviewIndex = 0;
     
-    await smsNotifier.sendCustomMessage(`📝 Found ${unrepliedReviews.length} review(s) that need replies. Starting individual review process...`);
+    await smsNotifier.sendCustomMessage(`📝 Found ${newReviews.length} new review(s) that need replies. Starting individual review process...`);
+    
+    // Save timestamp before processing individual reviews
+    await saveLastCheckTimestamp();
     
     // Wait a moment, then start sending individual review prompts
     setTimeout(async () => {
