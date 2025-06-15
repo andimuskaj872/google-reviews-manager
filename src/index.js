@@ -385,8 +385,8 @@ app.get('/debug/reviews', async (req, res) => {
     let realReviews = [];
     
     try {
-      console.log('Testing Google Business Profile API call...');
-      realReviews = await googleClient.getReviewsFromBusinessInfo();
+      console.log('Testing Google My Business v4 API call...');
+      realReviews = await googleClient.getReviewsFromAPI();
       console.log(`Direct API call successful: ${realReviews.length} reviews`);
     } catch (error) {
       apiError = {
@@ -431,6 +431,8 @@ app.get('/debug/reviews', async (req, res) => {
       hasRefreshToken: !!process.env.GOOGLE_REFRESH_TOKEN,
       hasClientId: !!process.env.GOOGLE_CLIENT_ID,
       hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+      hasAccountId: !!process.env.GOOGLE_ACCOUNT_ID,
+      accountId: process.env.GOOGLE_ACCOUNT_ID,
       sampleReviews: allReviews.slice(0, 3).map(r => ({
         starRating: r.starRating,
         hasReply: !!r.reviewReply,

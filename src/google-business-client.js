@@ -47,26 +47,38 @@ class GoogleBusinessClient {
     return tokens;
   }
 
-  // Try to use the newer Business Profile APIs for reviews
-  async getReviewsFromBusinessInfo() {
-    if (!this.businessInfo) {
-      throw new Error('Business Info API not available');
+  // Make direct HTTP request to Google My Business API using the documented endpoint
+  async getReviewsFromAPI() {
+    if (!this.accountId) {
+      throw new Error('GOOGLE_ACCOUNT_ID environment variable is required for reviews API');
     }
     
-    try {
-      // Try the Business Information API for reviews
-      const response = await this.businessInfo.locations.reviews.list({
-        parent: `locations/${this.locationId}`,
-        auth: this.oauth2Client,
-        pageSize: 50,
-        orderBy: 'updateTime desc'
-      });
-      
-      return response.data.reviews || [];
-    } catch (error) {
-      console.error('Business Info API failed:', error);
-      throw error;
+    // Get access token
+    await this.oauth2Client.getAccessToken();
+    const token = this.oauth2Client.credentials.access_token;
+    
+    // Use the exact endpoint from Google's documentation
+    const url = `https://mybusiness.googleapis.com/v4/accounts/${this.accountId}/locations/${this.locationId}/reviews?pageSize=50&orderBy=updateTime desc`;
+    
+    console.log('Making request to:', url);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API Response:', response.status, response.statusText);
+      console.error('Error body:', errorText);
+      throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
     }
+    
+    const data = await response.json();
+    return data.reviews || [];
   }
 
   // Test API availability
@@ -99,10 +111,10 @@ class GoogleBusinessClient {
         return this.getMockReviews(sinceTimestamp);
       }
 
-      // Fetch real reviews from Google Business Profile API
-      console.log('Fetching real reviews from Google Business Profile API...');
+      // Fetch real reviews from Google My Business API v4
+      console.log('Fetching real reviews from Google My Business API v4...');
       
-      const allReviews = await this.getReviewsFromBusinessInfo();
+      const allReviews = await this.getReviewsFromAPI();
       console.log(`Fetched ${allReviews.length} total reviews from Google My Business`);
       
       // Filter by timestamp if provided (for new reviews since last run)
@@ -169,7 +181,7 @@ class GoogleBusinessClient {
       }
 
       // Fetch ALL reviews (for summary purposes)
-      const reviews = await this.getReviewsFromBusinessInfo();
+      const reviews = await this.getReviewsFromAPI();
       console.log(`Fetched ${reviews.length} total reviews for summary`);
       
       return reviews.map(review => ({
