@@ -1,0 +1,12 @@
+# Global code owners - these users will be requested for review on all PRs
+* @andimuskaj872
+
+# Specific file ownership
+src/ @andimuskaj872
+docs/ @andimuskaj872
+*.md @andimuskaj872
+
+# Package and config files require extra scrutiny
+package.json @andimuskaj872
+package-lock.json @andimuskaj872
+.env.example @andimuskaj872
