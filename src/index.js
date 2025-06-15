@@ -344,6 +344,50 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+// Debug endpoint to see raw review data
+app.get('/debug/reviews', async (req, res) => {
+  try {
+    console.log('=== DEBUG: Fetching reviews ===');
+    
+    // Get all reviews without filtering
+    const allReviews = await googleClient.getAllReviews();
+    console.log(`Total reviews fetched: ${allReviews.length}`);
+    
+    // Count reviews with/without replies
+    const withReplies = allReviews.filter(r => r.reviewReply).length;
+    const withoutReplies = allReviews.filter(r => !r.reviewReply).length;
+    
+    console.log(`Reviews with replies: ${withReplies}`);
+    console.log(`Reviews without replies: ${withoutReplies}`);
+    
+    // Get actionable reviews (what the workflow uses)
+    const actionableReviews = await googleClient.getReviews();
+    console.log(`Actionable reviews: ${actionableReviews.length}`);
+    
+    res.json({
+      totalReviews: allReviews.length,
+      withReplies,
+      withoutReplies,
+      actionableReviews: actionableReviews.length,
+      usingMockData: process.env.USE_MOCK_DATA === 'true',
+      locationId: process.env.LOCATION_ID,
+      sampleReviews: allReviews.slice(0, 3).map(r => ({
+        starRating: r.starRating,
+        hasReply: !!r.reviewReply,
+        createTime: r.createTime,
+        comment: r.comment?.substring(0, 100) + '...'
+      }))
+    });
+    
+  } catch (error) {
+    console.error('Debug endpoint error:', error);
+    res.status(500).json({ 
+      error: error.message,
+      stack: error.stack 
+    });
+  }
+});
+
 // Schedule daily review workflow at 9 PM NY time (America/New_York timezone)
 cron.schedule('0 21 * * *', runDailyReviewWorkflow, {
   timezone: 'America/New_York'
