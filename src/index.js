@@ -25,21 +25,31 @@ async function runDailyReviewWorkflow() {
   try {
     console.log('Starting daily review workflow...');
     
-    // Get all reviews
-    const reviews = await googleClient.getReviews();
+    // Get all reviews for summary
+    const allReviews = await googleClient.getAllReviews();
     
-    if (reviews.length === 0) {
-      await smsNotifier.sendCustomMessage('📊 Daily Review Update: No reviews found today!');
+    // Get only unreplied reviews for individual processing
+    const unrepliedReviews = await googleClient.getReviews();
+    
+    if (allReviews.length === 0) {
+      await smsNotifier.sendCustomMessage('📊 Daily Review Update: No reviews found!');
       return;
     }
     
-    // Send summary first
-    const summary = await reviewSummarizer.summarizeReviews(reviews);
+    // Send summary of ALL reviews first
+    const summary = await reviewSummarizer.summarizeReviews(allReviews);
     await smsNotifier.sendReviewSummary(summary);
     
-    // Store reviews for individual processing
-    dailyReviews = reviews;
+    if (unrepliedReviews.length === 0) {
+      await smsNotifier.sendCustomMessage('✅ All reviews have been replied to! No action needed.');
+      return;
+    }
+    
+    // Store only unreplied reviews for individual processing
+    dailyReviews = unrepliedReviews;
     currentReviewIndex = 0;
+    
+    await smsNotifier.sendCustomMessage(`📝 Found ${unrepliedReviews.length} review(s) that need replies. Starting individual review process...`);
     
     // Wait a moment, then start sending individual review prompts
     setTimeout(async () => {

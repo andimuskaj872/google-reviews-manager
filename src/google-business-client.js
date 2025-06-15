@@ -59,11 +59,29 @@ class GoogleBusinessClient {
         orderBy: 'updateTime desc' // Most recent first
       });
 
-      const reviews = response.data.reviews || [];
-      console.log(`Fetched ${reviews.length} reviews from Google My Business`);
+      const allReviews = response.data.reviews || [];
+      console.log(`Fetched ${allReviews.length} total reviews from Google My Business`);
+      
+      // Filter out reviews that already have replies (unless they're very recent)
+      const unrepliedReviews = allReviews.filter(review => {
+        // Include if no reply exists
+        if (!review.reviewReply) {
+          return true;
+        }
+        
+        // Include if review is very recent (within last 24 hours) even if replied
+        // This allows for follow-up or correction opportunities
+        const reviewDate = new Date(review.createTime);
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const isVeryRecent = reviewDate > oneDayAgo;
+        
+        return isVeryRecent;
+      });
+      
+      console.log(`${unrepliedReviews.length} reviews need attention (${allReviews.length - unrepliedReviews.length} already replied)`);
       
       // Transform the data to ensure consistent format
-      return reviews.map(review => ({
+      return unrepliedReviews.map(review => ({
         name: review.name,
         starRating: review.starRating || 0,
         comment: review.comment || '',
@@ -73,7 +91,8 @@ class GoogleBusinessClient {
           displayName: review.reviewer?.displayName || 'Anonymous',
           profilePhotoUrl: review.reviewer?.profilePhotoUrl
         },
-        reviewReply: review.reviewReply
+        reviewReply: review.reviewReply,
+        hasExistingReply: !!review.reviewReply
       }));
 
     } catch (error) {
@@ -81,6 +100,42 @@ class GoogleBusinessClient {
       
       // If API fails, fall back to mock data with warning
       console.warn('Falling back to mock data due to API error');
+      return this.getMockReviews();
+    }
+  }
+
+  async getAllReviews() {
+    try {
+      // Use mock data if specified
+      if (process.env.USE_MOCK_DATA === 'true') {
+        return this.getMockReviews();
+      }
+
+      // Fetch ALL reviews (for summary purposes)
+      const response = await this.businessInfo.locations.reviews.list({
+        parent: `locations/${this.locationId}`,
+        auth: this.oauth2Client,
+        pageSize: 100, // More reviews for better summary
+        orderBy: 'updateTime desc'
+      });
+
+      const reviews = response.data.reviews || [];
+      console.log(`Fetched ${reviews.length} total reviews for summary`);
+      
+      return reviews.map(review => ({
+        name: review.name,
+        starRating: review.starRating || 0,
+        comment: review.comment || '',
+        createTime: review.createTime,
+        updateTime: review.updateTime,
+        reviewer: {
+          displayName: review.reviewer?.displayName || 'Anonymous'
+        },
+        reviewReply: review.reviewReply
+      }));
+
+    } catch (error) {
+      console.error('Error fetching all reviews:', error);
       return this.getMockReviews();
     }
   }
