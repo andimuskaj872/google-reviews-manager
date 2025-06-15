@@ -17,16 +17,10 @@ class GoogleBusinessClient {
       });
     }
 
-    // Try to initialize Google Business APIs
-    // The Google My Business API has been deprecated and replaced with different APIs
-    try {
-      this.mybusiness = google.mybusinessaccountmanagement('v1');
-      this.businessinfo = google.mybusinessbusinessinformation('v1'); 
-      this.businessprofile = google.businessprofileperformance('v1');
-    } catch (error) {
-      console.warn('Some Google Business APIs may not be available:', error.message);
-    }
+    // Initialize Google My Business API v4 (still active for reviews)
+    this.mybusiness = google.mybusiness('v4');
     this.locationId = process.env.LOCATION_ID;
+    this.accountId = process.env.GOOGLE_ACCOUNT_ID; // We'll need this for reviews
   }
 
   async getAuthUrl() {
@@ -53,12 +47,22 @@ class GoogleBusinessClient {
     
     try {
       apis.mybusiness = !!this.mybusiness;
-      apis.businessinfo = !!this.businessinfo;
-      apis.businessprofile = !!this.businessprofile;
+      apis.hasAccountId = !!this.accountId;
+      apis.hasLocationId = !!this.locationId;
       
-      // Test if specific methods exist
-      apis.businessinfoReviews = !!(this.businessinfo?.locations?.reviews?.list);
-      apis.businessprofileReviews = !!(this.businessprofile?.locations?.reviews?.list);
+      // Test if the correct My Business v4 API methods exist
+      apis.reviewsEndpoint = !!(this.mybusiness?.accounts?.locations?.reviews?.list);
+      apis.replyEndpoint = !!(this.mybusiness?.accounts?.locations?.reviews?.updateReply);
+      
+      // Check My Business API structure
+      if (this.mybusiness) {
+        apis.mybusinessStructure = {
+          hasAccounts: !!this.mybusiness.accounts,
+          accountsKeys: this.mybusiness.accounts ? Object.keys(this.mybusiness.accounts) : [],
+          hasAccountsLocations: !!(this.mybusiness.accounts?.locations),
+          accountsLocationsKeys: this.mybusiness.accounts?.locations ? Object.keys(this.mybusiness.accounts.locations) : []
+        };
+      }
       
     } catch (error) {
       apis.error = error.message;
@@ -75,11 +79,15 @@ class GoogleBusinessClient {
         return this.getMockReviews(sinceTimestamp);
       }
 
-      // Fetch real reviews from Google Business Info API
-      console.log('Fetching real reviews from Google Business Info API...');
+      // Fetch real reviews from Google My Business v4 API
+      console.log('Fetching real reviews from Google My Business v4 API...');
       
-      const response = await this.businessinfo.locations.reviews.list({
-        parent: `locations/${this.locationId}`,
+      if (!this.accountId) {
+        throw new Error('GOOGLE_ACCOUNT_ID environment variable is required for reviews API');
+      }
+      
+      const response = await this.mybusiness.accounts.locations.reviews.list({
+        parent: `accounts/${this.accountId}/locations/${this.locationId}`,
         auth: this.oauth2Client,
         pageSize: 50, // Fetch up to 50 reviews
         orderBy: 'updateTime desc' // Most recent first
@@ -152,8 +160,12 @@ class GoogleBusinessClient {
       }
 
       // Fetch ALL reviews (for summary purposes)
-      const response = await this.businessinfo.locations.reviews.list({
-        parent: `locations/${this.locationId}`,
+      if (!this.accountId) {
+        throw new Error('GOOGLE_ACCOUNT_ID environment variable is required for reviews API');
+      }
+      
+      const response = await this.mybusiness.accounts.locations.reviews.list({
+        parent: `accounts/${this.accountId}/locations/${this.locationId}`,
         auth: this.oauth2Client,
         pageSize: 100, // More reviews for better summary
         orderBy: 'updateTime desc'
@@ -231,10 +243,10 @@ class GoogleBusinessClient {
         };
       }
 
-      // Post real reply to Google Business Info
-      console.log('Posting real reply to Google Business Info:', reviewName);
+      // Post real reply to Google My Business v4
+      console.log('Posting real reply to Google My Business v4:', reviewName);
       
-      const response = await this.businessinfo.locations.reviews.reply({
+      const response = await this.mybusiness.accounts.locations.reviews.updateReply({
         name: reviewName,
         auth: this.oauth2Client,
         requestBody: {
