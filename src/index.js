@@ -344,6 +344,33 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+// Helper endpoint to discover Google My Business Account ID
+app.get('/debug/accounts', async (req, res) => {
+  try {
+    console.log('=== DEBUG: Discovering Google My Business Accounts ===');
+    
+    const response = await googleClient.makeMyBusinessRequest('accounts');
+    const accounts = response.accounts || [];
+    
+    res.json({
+      totalAccounts: accounts.length,
+      accounts: accounts.map(account => ({
+        name: account.name,
+        accountName: account.accountName,
+        type: account.type,
+        role: account.role
+      }))
+    });
+    
+  } catch (error) {
+    console.error('Debug accounts error:', error);
+    res.status(500).json({ 
+      error: error.message,
+      suggestion: 'Make sure you have Google My Business API enabled and proper authentication'
+    });
+  }
+});
+
 // Debug endpoint to see raw review data
 app.get('/debug/reviews', async (req, res) => {
   try {
