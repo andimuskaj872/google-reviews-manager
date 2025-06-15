@@ -37,9 +37,16 @@ A Node.js application that automatically manages Google My Business reviews usin
 3. **Google My Business API Setup:**
    - Go to [Google Cloud Console](https://console.cloud.google.com/)
    - Create a new project or select existing
-   - Enable Google My Business API
+   - Enable "My Business Business Information API"
    - Create OAuth 2.0 credentials
    - Add your redirect URI (see deployment section for URLs)
+   - **⚠️ IMPORTANT: Request API Quota Increase**
+     - Go to APIs & Services → Quotas
+     - Search for "Business Information API"
+     - The default quota is 0 requests/minute (disabled)
+     - Click "Edit Quotas" and request an increase (e.g., 100 requests/day)
+     - Google typically takes 1-7 days to approve quota requests
+     - You may need to provide business verification details
 
 4. **Claude API Setup:**
    - Get API key from [Anthropic Console](https://console.anthropic.com/)
