@@ -17,10 +17,19 @@ class GoogleBusinessClient {
       });
     }
 
-    // Initialize Google Business Profile APIs (replacements for deprecated My Business API)
+    // Try multiple API service names to find what works
     try {
+      // These are the known Google Business APIs in the googleapis library
       this.businessInfo = google.mybusinessbusinessinformation('v1');
       this.accountManagement = google.mybusinessaccountmanagement('v1');
+      
+      // Try the v4.9 API if it exists
+      try {
+        this.mybusinessv4 = google.mybusiness && google.mybusiness('v4');
+      } catch (e) {
+        console.log('mybusiness v4 not available');
+      }
+      
     } catch (error) {
       console.warn('Business Profile APIs not available:', error.message);
     }
@@ -47,41 +56,46 @@ class GoogleBusinessClient {
     return tokens;
   }
 
-  // Make direct HTTP request to Google My Business API using the documented endpoint
+  // Try using the Business Information API for reviews
   async getReviewsFromAPI() {
-    if (!this.accountId) {
-      throw new Error('GOOGLE_ACCOUNT_ID environment variable is required for reviews API');
-    }
-    
-    // Get access token
-    await this.oauth2Client.getAccessToken();
-    const token = this.oauth2Client.credentials.access_token;
-    
-    // Use the exact endpoint from Google's documentation
-    const url = `https://mybusiness.googleapis.com/v4/accounts/${this.accountId}/locations/${this.locationId}/reviews?pageSize=50&orderBy=updateTime desc`;
-    
-    console.log('Making request to:', url);
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+    try {
+      console.log('Attempting to fetch reviews using Business Information API...');
+      
+      // Try the Business Information API approach
+      const response = await this.businessInfo.locations.reviews.list({
+        parent: `locations/${this.locationId}`,
+        auth: this.oauth2Client,
+        pageSize: 50
+      });
+      
+      console.log('Business Info API response:', response.data);
+      return response.data.reviews || [];
+      
+    } catch (error) {
+      console.error('Business Info API failed:', error.message);
+      
+      // If that fails, try a direct approach without account ID
+      try {
+        console.log('Trying direct location reviews access...');
+        
+        // Some APIs might work with just the location
+        const response = await this.businessInfo.locations.get({
+          name: `locations/${this.locationId}`,
+          auth: this.oauth2Client,
+          readMask: 'name,reviews'
+        });
+        
+        console.log('Direct location response:', response.data);
+        return response.data.reviews || [];
+        
+      } catch (error2) {
+        console.error('Direct location API also failed:', error2.message);
+        throw new Error(`All API approaches failed. Last error: ${error2.message}`);
       }
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API Response:', response.status, response.statusText);
-      console.error('Error body:', errorText);
-      throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
     }
-    
-    const data = await response.json();
-    return data.reviews || [];
   }
 
-  // Test API availability
+  // Test API availability with detailed diagnostics
   testAvailableAPIs() {
     const apis = {};
     
@@ -93,8 +107,25 @@ class GoogleBusinessClient {
       apis.hasBusinessInfo = !!this.businessInfo;
       apis.hasAccountManagement = !!this.accountManagement;
       
-      // Test if reviews endpoints exist
-      apis.businessInfoReviews = !!(this.businessInfo?.locations?.reviews?.list);
+      // Detailed API structure exploration
+      if (this.businessInfo) {
+        apis.businessInfoStructure = {
+          available: true,
+          hasLocations: !!this.businessInfo.locations,
+          locationsKeys: this.businessInfo.locations ? Object.keys(this.businessInfo.locations) : [],
+          locationsReviews: !!(this.businessInfo.locations?.reviews),
+          locationsReviewsList: !!(this.businessInfo.locations?.reviews?.list),
+          locationsGet: !!(this.businessInfo.locations?.get)
+        };
+      }
+      
+      // Test access token availability
+      apis.tokenInfo = {
+        hasCredentials: !!this.oauth2Client.credentials,
+        hasAccessToken: !!this.oauth2Client.credentials?.access_token,
+        hasRefreshToken: !!this.oauth2Client.credentials?.refresh_token,
+        tokenType: this.oauth2Client.credentials?.token_type
+      };
       
     } catch (error) {
       apis.error = error.message;
