@@ -349,9 +349,33 @@ app.get('/debug/reviews', async (req, res) => {
   try {
     console.log('=== DEBUG: Fetching reviews ===');
     
-    // Get all reviews without filtering
+    // Test API connection directly
+    let apiError = null;
+    let realReviews = [];
+    
+    try {
+      console.log('Testing direct Google My Business API call...');
+      const response = await googleClient.businessInfo.locations.reviews.list({
+        parent: `locations/${process.env.LOCATION_ID}`,
+        auth: googleClient.oauth2Client,
+        pageSize: 50,
+        orderBy: 'updateTime desc'
+      });
+      realReviews = response.data.reviews || [];
+      console.log(`Direct API call successful: ${realReviews.length} reviews`);
+    } catch (error) {
+      apiError = {
+        message: error.message,
+        code: error.code,
+        status: error.status,
+        details: error.details
+      };
+      console.error('Direct API call failed:', apiError);
+    }
+    
+    // Get all reviews using existing method (may fall back to mock)
     const allReviews = await googleClient.getAllReviews();
-    console.log(`Total reviews fetched: ${allReviews.length}`);
+    console.log(`getAllReviews() returned: ${allReviews.length} reviews`);
     
     // Count reviews with/without replies
     const withReplies = allReviews.filter(r => r.reviewReply).length;
@@ -364,13 +388,23 @@ app.get('/debug/reviews', async (req, res) => {
     const actionableReviews = await googleClient.getReviews();
     console.log(`Actionable reviews: ${actionableReviews.length}`);
     
+    // Check if we're getting mock data by comparing first review
+    const isMockData = allReviews.length > 0 && 
+      allReviews[0].comment?.includes('Amazing Chinese food! The Beijing duck');
+    
     res.json({
+      apiError,
       totalReviews: allReviews.length,
+      realApiReviews: realReviews.length,
       withReplies,
       withoutReplies,
       actionableReviews: actionableReviews.length,
       usingMockData: process.env.USE_MOCK_DATA === 'true',
+      actuallyMockData: isMockData,
       locationId: process.env.LOCATION_ID,
+      hasRefreshToken: !!process.env.GOOGLE_REFRESH_TOKEN,
+      hasClientId: !!process.env.GOOGLE_CLIENT_ID,
+      hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
       sampleReviews: allReviews.slice(0, 3).map(r => ({
         starRating: r.starRating,
         hasReply: !!r.reviewReply,
