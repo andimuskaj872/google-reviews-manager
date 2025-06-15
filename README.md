@@ -86,8 +86,9 @@ This app is designed to run 24/7 in the cloud for automated daily reviews.
    - Set method to "POST"
 
 6. **Test Deployment:**
-   - Visit: `https://your-app-name.railway.app/health`
-   - Should return: `{"status":"OK"}`
+   - Health check: Visit `https://your-app-name.railway.app/health`
+   - Should return: `{"status":"OK","timestamp":"..."}`
+   - Test workflow: `curl -X POST https://your-app-name.railway.app/daily-workflow`
 
 ## Usage
 
@@ -113,8 +114,8 @@ Once deployed on Railway, your app runs automatically 24/7:
    - `NO[ID]` - Cancel a reply
 
 3. **Manual Testing:**
-   - Visit: `https://your-app-name.railway.app/daily-workflow` to trigger workflow
-   - Visit: `https://your-app-name.railway.app/health` to check status
+   - Check status: Visit `https://your-app-name.railway.app/health`
+   - Trigger workflow: `curl -X POST https://your-app-name.railway.app/daily-workflow`
 
 ### API Endpoints
 - `GET /reviews` - Fetch all reviews
