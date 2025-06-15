@@ -141,6 +141,16 @@ The app automatically runs every day at 9 PM NY time to:
 3. Generate casual, humble responses for approval
 4. Submit replies only after SMS confirmation
 
+## 🧪 Demo Mode
+
+By default, the app uses mock review data for testing and demonstration. This allows you to:
+- ✅ Test the complete SMS workflow
+- ✅ See how AI responses work
+- ✅ Try the daily automation
+- ✅ Deploy without real Google reviews
+
+Set `USE_MOCK_DATA=false` when you're ready to connect real Google My Business data.
+
 ## Environment Variables
 
 ```env

@@ -40,7 +40,20 @@ class GoogleBusinessClient {
 
   async getReviews() {
     try {
-      // For now, return mock data to test the summarization
+      // TODO: Implement real Google My Business API integration
+      // For now, using mock data for testing and demonstration
+      
+      if (process.env.USE_MOCK_DATA === 'false') {
+        // Real API implementation would go here
+        // const response = await this.businessprofile.locations.reviews.list({
+        //   parent: `locations/${this.locationId}`,
+        //   auth: this.oauth2Client
+        // });
+        // return response.data.reviews || [];
+        throw new Error('Real Google My Business API not implemented yet. Set USE_MOCK_DATA=true to use demo data.');
+      }
+
+      // Mock data for testing and demonstration
       return [
         {
           name: 'accounts/123/locations/456/reviews/review1',
