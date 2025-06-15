@@ -60,34 +60,54 @@ async function runDailyReviewWorkflow() {
       console.log('First time running - will check all recent reviews');
     }
     
-    // Get only new reviews since last check
+    // Get only new reviews since last check (for summary)
     const newReviews = await googleClient.getReviews(lastCheckTime);
     
-    if (newReviews.length === 0) {
+    // Get ALL unreplied reviews (for individual processing)
+    const allUnrepliedReviews = await googleClient.getReviews(); // No timestamp filter
+    
+    // Send summary of NEW reviews if any
+    if (newReviews.length > 0) {
+      const summary = await reviewSummarizer.summarizeReviews(newReviews);
+      const timeStr = lastCheckTime ? 
+        `since ${lastCheckTime.toLocaleDateString()}` : 
+        'recent';
+        
+      await smsNotifier.sendCustomMessage(`📊 New Reviews Summary (${timeStr}):\n\n${summary}`);
+    } else {
       const timeStr = lastCheckTime ? 
         `since ${lastCheckTime.toLocaleDateString()} ${lastCheckTime.toLocaleTimeString()}` : 
         'today';
       
-      await smsNotifier.sendCustomMessage(`📊 Daily Review Update: No new reviews ${timeStr}. Your business is all caught up! 👍`);
+      await smsNotifier.sendCustomMessage(`📊 Daily Review Update: No new reviews ${timeStr}.`);
+    }
+    
+    // Check for ALL unreplied reviews (including old ones)
+    if (allUnrepliedReviews.length === 0) {
+      await smsNotifier.sendCustomMessage(`✅ All reviews have been replied to! Your business is all caught up! 👍`);
       
-      // Save timestamp even when no new reviews
+      // Save timestamp even when no action needed
       await saveLastCheckTimestamp();
       return;
     }
     
-    // Send summary of NEW reviews only
-    const summary = await reviewSummarizer.summarizeReviews(newReviews);
-    const timeStr = lastCheckTime ? 
-      `since ${lastCheckTime.toLocaleDateString()}` : 
-      'recent';
-      
-    await smsNotifier.sendCustomMessage(`📊 New Reviews Summary (${timeStr}):\n\n${summary}`);
-    
-    // Store new reviews for individual processing
-    dailyReviews = newReviews;
+    // Store ALL unreplied reviews for individual processing (new + old unreplied)
+    dailyReviews = allUnrepliedReviews;
     currentReviewIndex = 0;
     
-    await smsNotifier.sendCustomMessage(`📝 Found ${newReviews.length} new review(s) that need replies. Starting individual review process...`);
+    const newCount = newReviews.length;
+    const totalCount = allUnrepliedReviews.length;
+    const oldCount = totalCount - newCount;
+    
+    let message = `📝 Found ${totalCount} review(s) that need replies`;
+    if (newCount > 0 && oldCount > 0) {
+      message += ` (${newCount} new, ${oldCount} previous)`;
+    } else if (oldCount > 0) {
+      message += ` (all from previous days)`;
+    }
+    message += '. Starting individual review process...';
+    
+    await smsNotifier.sendCustomMessage(message);
     
     // Save timestamp before processing individual reviews
     await saveLastCheckTimestamp();
