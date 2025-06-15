@@ -28,6 +28,7 @@
   "homepage": "https://github.com/andimuskaj872/google-reviews-manager#readme",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.54.0",
+    "@modelcontextprotocol/sdk": "^1.12.3",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "googleapis": "^126.0.1",

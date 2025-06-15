@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Reviews Analytics Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .dashboard {
+            padding: 2rem 0;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .metric-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.2s ease;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+        
+        .metric-label {
+            color: #666;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .section {
+            background: white;
+            margin-bottom: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .section-header {
+            background: #f8f9fa;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #eee;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .section-content {
+            padding: 1.5rem;
+        }
+        
+        .sentiment-bar {
+            display: flex;
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 1rem 0;
+            background: #e9ecef;
+        }
+        
+        .sentiment-positive {
+            background: #28a745;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .sentiment-neutral {
+            background: #ffc107;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .sentiment-negative {
+            background: #dc3545;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .review-item {
+            border-bottom: 1px solid #eee;
+            padding: 1rem 0;
+        }
+        
+        .review-item:last-child {
+            border-bottom: none;
+        }
+        
+        .review-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .review-rating {
+            color: #ffc107;
+            font-size: 1.2rem;
+        }
+        
+        .review-sentiment {
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        
+        .sentiment-positive-badge { background: #d4edda; color: #155724; }
+        .sentiment-neutral-badge { background: #fff3cd; color: #856404; }
+        .sentiment-negative-badge { background: #f8d7da; color: #721c24; }
+        
+        .review-comment {
+            color: #666;
+            margin: 0.5rem 0;
+        }
+        
+        .review-meta {
+            font-size: 0.8rem;
+            color: #999;
+        }
+        
+        .rating-bar {
+            display: flex;
+            align-items: center;
+            margin: 0.5rem 0;
+        }
+        
+        .rating-label {
+            width: 30px;
+            font-weight: 500;
+        }
+        
+        .rating-progress {
+            flex: 1;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            margin: 0 1rem;
+            overflow: hidden;
+        }
+        
+        .rating-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #dc3545 0%, #ffc107 25%, #fd7e14 50%, #20c997 75%, #28a745 100%);
+            transition: width 0.3s ease;
+        }
+        
+        .rating-count {
+            width: 40px;
+            text-align: right;
+            font-weight: 500;
+        }
+        
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s ease;
+        }
+        
+        .refresh-btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        
+        .insights-text {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            white-space: pre-line;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <h1>📊 Google Reviews Analytics Dashboard</h1>
+            <p>Real-time insights for your business reviews</p>
+        </div>
+    </div>
+
+    <div class="container dashboard">
+        <div class="metrics-grid" id="metricsGrid">
+            <div class="metric-card">
+                <div class="metric-value" id="totalReviews">-</div>
+                <div class="metric-label">Total Reviews</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="averageRating">-</div>
+                <div class="metric-label">Average Rating</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="responseRate">-</div>
+                <div class="metric-label">Response Rate</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="aiResponses">-</div>
+                <div class="metric-label">AI Responses</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                📈 AI-Powered Insights
+                <button class="refresh-btn" onclick="loadAnalytics()" style="float: right;">Refresh Data</button>
+            </div>
+            <div class="section-content">
+                <div class="insights-text" id="insights">Loading insights...</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">😊 Sentiment Analysis</div>
+            <div class="section-content">
+                <div class="sentiment-bar" id="sentimentBar">
+                    <div class="sentiment-positive" style="width: 0%">Positive (0)</div>
+                    <div class="sentiment-neutral" style="width: 0%">Neutral (0)</div>
+                    <div class="sentiment-negative" style="width: 0%">Negative (0)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">⭐ Rating Distribution</div>
+            <div class="section-content" id="ratingDistribution">
+                Loading...
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">📝 Recent Reviews</div>
+            <div class="section-content" id="recentReviews">
+                Loading...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let analyticsData = null;
+
+        async function loadAnalytics() {
+            try {
+                document.getElementById('insights').textContent = 'Loading analytics...';
+                
+                const response = await fetch('/analytics/report');
+                analyticsData = await response.json();
+                
+                updateMetrics();
+                updateInsights();
+                updateSentimentBar();
+                updateRatingDistribution();
+                updateRecentReviews();
+                
+            } catch (error) {
+                console.error('Failed to load analytics:', error);
+                document.getElementById('insights').textContent = 'Failed to load analytics data.';
+            }
+        }
+
+        function updateMetrics() {
+            if (!analyticsData) return;
+            
+            document.getElementById('totalReviews').textContent = analyticsData.metrics.totalReviews;
+            document.getElementById('averageRating').textContent = analyticsData.metrics.averageRating + '⭐';
+            document.getElementById('responseRate').textContent = analyticsData.metrics.responseRate + '%';
+            document.getElementById('aiResponses').textContent = analyticsData.responseBreakdown.aiGenerated;
+        }
+
+        function updateInsights() {
+            if (!analyticsData) return;
+            document.getElementById('insights').textContent = analyticsData.insights;
+        }
+
+        function updateSentimentBar() {
+            if (!analyticsData) return;
+            
+            const sentiment = analyticsData.metrics.sentimentCounts;
+            const total = sentiment.positive + sentiment.neutral + sentiment.negative;
+            
+            if (total === 0) {
+                document.getElementById('sentimentBar').innerHTML = '<div style="padding: 0.5rem; text-align: center; color: #666;">No sentiment data available</div>';
+                return;
+            }
+            
+            const positivePercent = (sentiment.positive / total) * 100;
+            const neutralPercent = (sentiment.neutral / total) * 100;
+            const negativePercent = (sentiment.negative / total) * 100;
+            
+            document.getElementById('sentimentBar').innerHTML = `
+                <div class="sentiment-positive" style="width: ${positivePercent}%">
+                    ${positivePercent > 15 ? `Positive (${sentiment.positive})` : ''}
+                </div>
+                <div class="sentiment-neutral" style="width: ${neutralPercent}%">
+                    ${neutralPercent > 15 ? `Neutral (${sentiment.neutral})` : ''}
+                </div>
+                <div class="sentiment-negative" style="width: ${negativePercent}%">
+                    ${negativePercent > 15 ? `Negative (${sentiment.negative})` : ''}
+                </div>
+            `;
+        }
+
+        async function updateRatingDistribution() {
+            try {
+                const response = await fetch('/analytics/rating-distribution');
+                const data = await response.json();
+                
+                const total = data.total;
+                let html = '';
+                
+                for (let rating = 5; rating >= 1; rating--) {
+                    const count = data.distribution[rating];
+                    const percentage = total > 0 ? (count / total) * 100 : 0;
+                    
+                    html += `
+                        <div class="rating-bar">
+                            <div class="rating-label">${rating}⭐</div>
+                            <div class="rating-progress">
+                                <div class="rating-fill" style="width: ${percentage}%"></div>
+                            </div>
+                            <div class="rating-count">${count}</div>
+                        </div>
+                    `;
+                }
+                
+                document.getElementById('ratingDistribution').innerHTML = html || '<p>No rating data available</p>';
+            } catch (error) {
+                console.error('Failed to load rating distribution:', error);
+            }
+        }
+
+        function updateRecentReviews() {
+            if (!analyticsData || !analyticsData.recentReviews) return;
+            
+            const reviews = analyticsData.recentReviews;
+            let html = '';
+            
+            reviews.forEach(review => {
+                const sentimentClass = `sentiment-${review.sentiment}-badge`;
+                const stars = '⭐'.repeat(review.starRating);
+                const date = new Date(review.createTime).toLocaleDateString();
+                
+                html += `
+                    <div class="review-item">
+                        <div class="review-header">
+                            <div class="review-rating">${stars}</div>
+                            <div class="review-sentiment ${sentimentClass}">${review.sentiment}</div>
+                        </div>
+                        <div class="review-comment">${review.comment}</div>
+                        <div class="review-meta">
+                            ${date} • ${review.hasReply ? '✅ Replied' : '⏳ Pending Reply'}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('recentReviews').innerHTML = html || '<p>No recent reviews</p>';
+        }
+
+        // Auto-refresh every 30 seconds
+        setInterval(loadAnalytics, 30000);
+        
+        // Initial load
+        loadAnalytics();
+    </script>
+</body>
+</html>

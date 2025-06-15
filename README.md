@@ -6,7 +6,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
 [![Railway](https://img.shields.io/badge/Deploy-Railway-blueviolet.svg)](https://railway.app)
 
-A Node.js application that automatically manages Google My Business reviews using AI-powered responses, SMS notifications, and daily automation workflows.
+A Node.js application that automatically manages Google My Business reviews using AI-powered responses, SMS notifications, real-time analytics dashboard, and daily automation workflows.
 
 ## Features
 
@@ -18,6 +18,9 @@ A Node.js application that automatically manages Google My Business reviews usin
 - ⏰ Daily automated review workflow at 9 PM NY time
 - 💬 SMS-based confirmation system for review replies
 - 🎯 Casual, humble response style with customer first names
+- 📈 **Analytics Dashboard** - Real-time review analytics with sentiment analysis
+- 🧠 **AI-Powered Insights** - Smart business performance analysis
+- 📊 **MCP Integration** - Model Context Protocol for advanced analytics
 
 ## Setup
 
@@ -101,10 +104,18 @@ This app is designed to run 24/7 in the cloud for automated daily reviews.
    npm start
    ```
 
-2. **Authenticate with Google:**
+2. **Access the analytics dashboard:**
+   - Visit `http://localhost:3000/dashboard` to view the analytics web interface
+   - Or visit `http://localhost:3000` (redirects to dashboard)
+
+3. **Authenticate with Google:**
    - Visit `http://localhost:3000/auth` (or your Railway URL)
    - Complete OAuth flow
    - Save the refresh token to your environment variables
+
+4. **Test with mock data:**
+   - Trigger `curl -X POST http://localhost:3000/daily-workflow` to populate analytics with sample reviews
+   - View the populated dashboard to see sentiment analysis, rating distribution, and insights
 
 ### Cloud Deployment
 Once deployed on Railway, your app runs automatically 24/7:
@@ -121,14 +132,46 @@ Once deployed on Railway, your app runs automatically 24/7:
    - Trigger workflow: `curl -X POST https://your-app-name.railway.app/daily-workflow`
 
 ### API Endpoints
+
+#### Review Management
 - `GET /reviews` - Fetch all reviews
 - `POST /reviews/summarize` - Get AI summary of reviews
 - `POST /reviews/summarize-and-send` - Summarize and send via SMS
 - `POST /reviews/:reviewId/reply` - Reply to a specific review
 - `POST /reviews/:reviewId/generate-reply` - Generate AI reply suggestion
+
+#### Analytics Dashboard
+- `GET /dashboard` - Web analytics dashboard
+- `GET /analytics/report` - Comprehensive analytics report
+- `GET /analytics/insights` - AI-powered insights
+- `GET /analytics/sentiment-trends` - Sentiment analysis over time
+- `GET /analytics/response-metrics` - Response performance data
+- `GET /analytics/rating-distribution` - Star rating breakdown
+- `GET /analytics/daily-summary` - Daily review statistics
+
+#### Workflow & Communication
 - `POST /sms/send` - Send custom SMS message
 - `POST /daily-workflow` - Manually trigger daily review workflow
 - `POST /sms/webhook` - Twilio webhook for SMS responses
+
+## 📊 Analytics Dashboard
+
+### Web Interface
+Visit `http://localhost:3000/dashboard` (or your Railway URL) to access the analytics dashboard featuring:
+
+- **📈 Real-time Metrics** - Total reviews, average rating, response rate, AI response count
+- **🧠 AI-Powered Insights** - Natural language analysis of your business performance
+- **😊 Sentiment Analysis** - Visual breakdown of positive, neutral, and negative reviews
+- **⭐ Rating Distribution** - Interactive star rating breakdown with progress bars
+- **📝 Recent Reviews** - Latest reviews with sentiment labels and reply status
+- **🔄 Auto-refresh** - Dashboard updates every 30 seconds automatically
+
+### Analytics Features
+- **Sentiment Analysis** - Automatic categorization of reviews using NLP
+- **Response Tracking** - Monitor both AI-generated and manual responses
+- **Performance Metrics** - Track response rates, average response times
+- **Historical Data** - Sentiment trends and rating patterns over time
+- **MCP Integration** - Built with Model Context Protocol for advanced analytics
 
 ## Daily Automation
 
@@ -137,6 +180,7 @@ The app automatically runs every day at 9 PM NY time to:
 2. Prompt you to reply to each review individually
 3. Generate casual, humble responses for approval
 4. Submit replies only after SMS confirmation
+5. **Track all reviews and responses in analytics automatically**
 
 ## 🧪 Demo vs Production Mode
 

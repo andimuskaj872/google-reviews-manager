@@ -1,18 +1,26 @@
 import express from 'express';
 import cron from 'node-cron';
 import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import GoogleBusinessClient from './google-business-client.js';
 import ReviewSummarizer from './review-summarizer.js';
 import SMSNotifier from './sms-notifier.js';
+import SimpleAnalytics from './simple-analytics.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Get current directory for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 app.use(express.json());
 
 const googleClient = new GoogleBusinessClient();
 const reviewSummarizer = new ReviewSummarizer();
 const smsNotifier = new SMSNotifier();
+const analyticsClient = new SimpleAnalytics();
 
 // Simple in-memory storage for pending replies
 const pendingReplies = new Map();
@@ -57,6 +65,16 @@ async function runDailyReviewWorkflow() {
     
     // Get ALL unreplied reviews (for individual processing)
     const allUnrepliedReviews = await googleClient.getReviews(); // No timestamp filter
+    
+    // Track new reviews in analytics
+    if (newReviews.length > 0) {
+      console.log('📊 Tracking new reviews in analytics...');
+      await analyticsClient.trackReviews(newReviews);
+    } else if (allUnrepliedReviews.length > 0) {
+      // If no new reviews but we have unreplied reviews, track them for analytics
+      console.log('📊 Tracking existing unreplied reviews in analytics...');
+      await analyticsClient.trackReviews(allUnrepliedReviews);
+    }
     
     // Send summary of NEW reviews if any
     if (newReviews.length > 0) {
@@ -186,6 +204,10 @@ app.post('/reviews/:reviewId/reply', async (req, res) => {
     const { message } = req.body;
     
     const result = await googleClient.replyToReview(reviewId, message);
+    
+    // Track response in analytics
+    await analyticsClient.trackResponse(reviewId, message, false);
+    
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -296,6 +318,13 @@ app.post('/sms/webhook', express.urlencoded({ extended: false }), async (req, re
           pendingReply.suggestedReply
         );
         
+        // Track AI-generated response in analytics
+        await analyticsClient.trackResponse(
+          pendingReply.reviewId, 
+          pendingReply.suggestedReply, 
+          true
+        );
+        
         pendingReplies.delete(confirmationId);
         
         await smsNotifier.sendCustomMessage(
@@ -342,6 +371,22 @@ app.post('/sms/send', async (req, res) => {
 
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// Serve analytics dashboard
+app.get('/dashboard', async (req, res) => {
+  try {
+    const dashboardPath = path.join(__dirname, 'views', 'analytics-dashboard.html');
+    const html = await fs.readFile(dashboardPath, 'utf8');
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load dashboard' });
+  }
+});
+
+app.get('/', (req, res) => {
+  res.redirect('/dashboard');
 });
 
 // Helper endpoint to discover Google My Business Account ID
@@ -450,6 +495,62 @@ app.get('/debug/reviews', async (req, res) => {
   }
 });
 
+// Analytics endpoints
+app.get('/analytics/report', async (req, res) => {
+  try {
+    const report = await analyticsClient.getAnalyticsReport();
+    res.json(report);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/analytics/insights', async (req, res) => {
+  try {
+    const { timeframe = 'week', metric = 'all' } = req.query;
+    const insights = await analyticsClient.getInsights(timeframe, metric);
+    res.json({ insights });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/analytics/sentiment-trends', async (req, res) => {
+  try {
+    const trends = await analyticsClient.getSentimentTrends();
+    res.json(trends);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/analytics/response-metrics', async (req, res) => {
+  try {
+    const metrics = await analyticsClient.getResponseMetrics();
+    res.json(metrics);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/analytics/rating-distribution', async (req, res) => {
+  try {
+    const distribution = await analyticsClient.getRatingDistribution();
+    res.json(distribution);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/analytics/daily-summary', async (req, res) => {
+  try {
+    const summary = await analyticsClient.getDailySummary();
+    res.json(summary);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Schedule daily review workflow at 9 PM NY time (America/New_York timezone)
 cron.schedule('0 21 * * *', runDailyReviewWorkflow, {
   timezone: 'America/New_York'
@@ -465,10 +566,34 @@ app.post('/daily-workflow', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
+app.listen(port, async () => {
   console.log(`Google Reviews Manager running on http://localhost:${port}`);
   console.log(`Visit http://localhost:${port}/auth to start OAuth flow`);
   console.log(`Daily review workflow scheduled for 9 PM NY time`);
+  
+  // Initialize analytics client
+  console.log('🔌 Initializing analytics...');
+  const connected = await analyticsClient.connect();
+  if (connected) {
+    console.log('📊 Analytics MCP Server connected successfully');
+    console.log(`📈 Web Dashboard: http://localhost:${port}/dashboard`);
+    console.log(`🔍 Analytics API: http://localhost:${port}/analytics/report`);
+  } else {
+    console.log('⚠️ Analytics MCP Server failed to connect - analytics features disabled');
+  }
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\n🔌 Shutting down gracefully...');
+  await analyticsClient.disconnect();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('\n🔌 Shutting down gracefully...');
+  await analyticsClient.disconnect();
+  process.exit(0);
 });
 
 export default app;
