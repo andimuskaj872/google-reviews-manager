@@ -73,19 +73,9 @@ This app is designed to run 24/7 in the cloud for automated daily reviews.
    - Click "Deploy Now"
 
 3. **Add Environment Variables:**
-   In Railway dashboard → Variables tab, add:
-   ```
-   GOOGLE_CLIENT_ID=your_client_id
-   GOOGLE_CLIENT_SECRET=your_client_secret
-   GOOGLE_REDIRECT_URI=https://your-app-name.railway.app/auth/callback
-   GOOGLE_REFRESH_TOKEN=your_refresh_token
-   LOCATION_ID=your_business_location_id
-   ANTHROPIC_API_KEY=your_anthropic_api_key
-   TWILIO_ACCOUNT_SID=your_account_sid
-   TWILIO_AUTH_TOKEN=your_auth_token
-   TWILIO_PHONE_NUMBER=your_twilio_number
-   NOTIFICATION_PHONE_NUMBER=your_target_number
-   ```
+   In Railway dashboard → Variables tab, add all variables from [`.env.example`](.env.example), but update:
+   - `GOOGLE_REDIRECT_URI=https://your-app-name.railway.app/auth/callback`
+   - `USE_MOCK_DATA=false` (for production mode)
 
 4. **Update Google OAuth:**
    - Go to Google Cloud Console → APIs & Services → Credentials
