@@ -15,6 +15,8 @@ A Node.js application to manage Google My Business reviews - fetch, respond, sum
 
 ## Setup
 
+### Local Development
+
 1. **Install dependencies:**
    ```bash
    npm install
@@ -24,43 +26,105 @@ A Node.js application to manage Google My Business reviews - fetch, respond, sum
    - Copy `.env.example` to `.env`
    - Fill in your API keys and configuration
 
+### API Setup
+
 3. **Google My Business API Setup:**
    - Go to [Google Cloud Console](https://console.cloud.google.com/)
    - Create a new project or select existing
    - Enable Google My Business API
    - Create OAuth 2.0 credentials
-   - Add your redirect URI: `http://localhost:3000/auth/callback`
+   - Add your redirect URI (see deployment section for URLs)
 
 4. **Claude API Setup:**
    - Get API key from [Anthropic Console](https://console.anthropic.com/)
-   - Add to `.env` file
+   - Add to environment variables
 
 5. **Twilio SMS Setup:**
    - Create account at [Twilio](https://www.twilio.com/)
    - Get Account SID, Auth Token, and phone number
-   - Add to `.env` file
+   - Add to environment variables
+
+## Deployment (Railway)
+
+This app is designed to run 24/7 in the cloud for automated daily reviews.
+
+### Deploy to Railway
+
+1. **Sign up for Railway:**
+   - Go to [railway.app](https://railway.app)
+   - Sign in with GitHub
+
+2. **Deploy from GitHub:**
+   - Click "New Project" → "Deploy from GitHub repo"
+   - Select your `google-reviews-manager` repository
+   - Click "Deploy Now"
+
+3. **Add Environment Variables:**
+   In Railway dashboard → Variables tab, add:
+   ```
+   GOOGLE_CLIENT_ID=your_client_id
+   GOOGLE_CLIENT_SECRET=your_client_secret
+   GOOGLE_REDIRECT_URI=https://your-app-name.railway.app/auth/callback
+   GOOGLE_REFRESH_TOKEN=your_refresh_token
+   LOCATION_ID=your_business_location_id
+   ANTHROPIC_API_KEY=your_anthropic_api_key
+   TWILIO_ACCOUNT_SID=your_account_sid
+   TWILIO_AUTH_TOKEN=your_auth_token
+   TWILIO_PHONE_NUMBER=your_twilio_number
+   NOTIFICATION_PHONE_NUMBER=your_target_number
+   ```
+
+4. **Update Google OAuth:**
+   - Go to Google Cloud Console → APIs & Services → Credentials
+   - Edit your OAuth 2.0 client
+   - Add redirect URI: `https://your-app-name.railway.app/auth/callback`
+
+5. **Configure Twilio Webhook:**
+   - Go to Twilio Console → Phone Numbers → Active Numbers
+   - Click your Twilio number
+   - Set webhook URL: `https://your-app-name.railway.app/sms/webhook`
+   - Set method to "POST"
+
+6. **Test Deployment:**
+   - Visit: `https://your-app-name.railway.app/health`
+   - Should return: `{"status":"OK"}`
 
 ## Usage
 
+### Local Development
 1. **Start the application:**
    ```bash
    npm start
    ```
 
 2. **Authenticate with Google:**
-   - Visit `http://localhost:3000/auth`
+   - Visit `http://localhost:3000/auth` (or your Railway URL)
    - Complete OAuth flow
-   - Save the refresh token to your `.env` file
+   - Save the refresh token to your environment variables
 
-3. **API Endpoints:**
-   - `GET /reviews` - Fetch all reviews
-   - `POST /reviews/summarize` - Get AI summary of reviews
-   - `POST /reviews/summarize-and-send` - Summarize and send via SMS
-   - `POST /reviews/:reviewId/reply` - Reply to a specific review
-   - `POST /reviews/:reviewId/generate-reply` - Generate AI reply suggestion
-   - `POST /sms/send` - Send custom SMS message
-   - `POST /daily-workflow` - Manually trigger daily review workflow
-   - `POST /sms/webhook` - Twilio webhook for SMS responses
+### Cloud Deployment
+Once deployed on Railway, your app runs automatically 24/7:
+
+1. **Automatic Daily Reviews:** App runs every day at 9 PM NY time
+2. **SMS Interaction:** Respond to SMS prompts with commands like:
+   - `REPLY1` - Generate response for review #1
+   - `SKIP2` - Skip review #2  
+   - `YES[ID]` - Approve a generated reply
+   - `NO[ID]` - Cancel a reply
+
+3. **Manual Testing:**
+   - Visit: `https://your-app-name.railway.app/daily-workflow` to trigger workflow
+   - Visit: `https://your-app-name.railway.app/health` to check status
+
+### API Endpoints
+- `GET /reviews` - Fetch all reviews
+- `POST /reviews/summarize` - Get AI summary of reviews
+- `POST /reviews/summarize-and-send` - Summarize and send via SMS
+- `POST /reviews/:reviewId/reply` - Reply to a specific review
+- `POST /reviews/:reviewId/generate-reply` - Generate AI reply suggestion
+- `POST /sms/send` - Send custom SMS message
+- `POST /daily-workflow` - Manually trigger daily review workflow
+- `POST /sms/webhook` - Twilio webhook for SMS responses
 
 ## Daily Automation
 
