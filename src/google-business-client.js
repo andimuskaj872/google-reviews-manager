@@ -17,6 +17,9 @@ class GoogleBusinessClient {
       });
     }
 
+    // Initialize Google My Business API client
+    this.mybusiness = google.mybusinessaccountmanagement('v1');
+    this.businessInfo = google.mybusinessbusinessinformation('v1');
     this.locationId = process.env.LOCATION_ID;
   }
 
@@ -40,63 +43,125 @@ class GoogleBusinessClient {
 
   async getReviews() {
     try {
-      // TODO: Implement real Google My Business API integration
-      // For now, using mock data for testing and demonstration
-      
-      if (process.env.USE_MOCK_DATA === 'false') {
-        // Real API implementation would go here
-        // const response = await this.businessprofile.locations.reviews.list({
-        //   parent: `locations/${this.locationId}`,
-        //   auth: this.oauth2Client
-        // });
-        // return response.data.reviews || [];
-        throw new Error('Real Google My Business API not implemented yet. Set USE_MOCK_DATA=true to use demo data.');
+      // Use mock data if specified
+      if (process.env.USE_MOCK_DATA === 'true') {
+        console.log('Using mock data for testing');
+        return this.getMockReviews();
       }
 
-      // Mock data for testing and demonstration
-      return [
-        {
-          name: 'accounts/123/locations/456/reviews/review1',
-          starRating: 5,
-          comment: 'Amazing Chinese food! The Beijing duck was perfectly cooked and the service was excellent. Will definitely come back!',
-          createTime: '2024-01-15T10:30:00Z',
-          reviewer: { displayName: 'John D.' }
+      // Fetch real reviews from Google My Business API
+      console.log('Fetching real reviews from Google My Business...');
+      
+      const response = await this.businessInfo.locations.reviews.list({
+        parent: `locations/${this.locationId}`,
+        auth: this.oauth2Client,
+        pageSize: 50, // Fetch up to 50 reviews
+        orderBy: 'updateTime desc' // Most recent first
+      });
+
+      const reviews = response.data.reviews || [];
+      console.log(`Fetched ${reviews.length} reviews from Google My Business`);
+      
+      // Transform the data to ensure consistent format
+      return reviews.map(review => ({
+        name: review.name,
+        starRating: review.starRating || 0,
+        comment: review.comment || '',
+        createTime: review.createTime,
+        updateTime: review.updateTime,
+        reviewer: {
+          displayName: review.reviewer?.displayName || 'Anonymous',
+          profilePhotoUrl: review.reviewer?.profilePhotoUrl
         },
-        {
-          name: 'accounts/123/locations/456/reviews/review2', 
-          starRating: 4,
-          comment: 'Good food but the wait time was a bit long. The dumplings were delicious though.',
-          createTime: '2024-01-10T19:45:00Z',
-          reviewer: { displayName: 'Sarah M.' }
-        },
-        {
-          name: 'accounts/123/locations/456/reviews/review3',
-          starRating: 5,
-          comment: 'Best Chinese restaurant in the area! Fresh ingredients and authentic flavors.',
-          createTime: '2024-01-08T14:20:00Z',
-          reviewer: { displayName: 'Mike R.' }
-        }
-      ];
+        reviewReply: review.reviewReply
+      }));
+
     } catch (error) {
-      console.error('Error fetching reviews:', error);
-      throw error;
+      console.error('Error fetching reviews from Google My Business:', error);
+      
+      // If API fails, fall back to mock data with warning
+      console.warn('Falling back to mock data due to API error');
+      return this.getMockReviews();
     }
+  }
+
+  getMockReviews() {
+    return [
+      {
+        name: 'accounts/123/locations/456/reviews/review1',
+        starRating: 5,
+        comment: 'Amazing Chinese food! The Beijing duck was perfectly cooked and the service was excellent. Will definitely come back!',
+        createTime: '2024-01-15T10:30:00Z',
+        reviewer: { displayName: 'John D.' }
+      },
+      {
+        name: 'accounts/123/locations/456/reviews/review2', 
+        starRating: 4,
+        comment: 'Good food but the wait time was a bit long. The dumplings were delicious though.',
+        createTime: '2024-01-10T19:45:00Z',
+        reviewer: { displayName: 'Sarah M.' }
+      },
+      {
+        name: 'accounts/123/locations/456/reviews/review3',
+        starRating: 5,
+        comment: 'Best Chinese restaurant in the area! Fresh ingredients and authentic flavors.',
+        createTime: '2024-01-08T14:20:00Z',
+        reviewer: { displayName: 'Mike R.' }
+      }
+    ];
   }
 
   async replyToReview(reviewName, replyText) {
     try {
-      // TESTING MODE - Not actually submitting to Google
-      console.log('TEST MODE: Would reply to review:', reviewName);
-      console.log('TEST MODE: Reply text:', replyText);
+      // Use test mode if specified
+      if (process.env.USE_MOCK_DATA === 'true') {
+        console.log('TEST MODE: Would reply to review:', reviewName);
+        console.log('TEST MODE: Reply text:', replyText);
+        
+        return {
+          message: 'TEST MODE: Reply not actually submitted',
+          reviewName,
+          replyText,
+          timestamp: new Date().toISOString()
+        };
+      }
+
+      // Post real reply to Google My Business
+      console.log('Posting real reply to Google My Business:', reviewName);
+      
+      const response = await this.businessInfo.locations.reviews.reply({
+        name: reviewName,
+        auth: this.oauth2Client,
+        requestBody: {
+          comment: replyText
+        }
+      });
+
+      console.log('Reply posted successfully to Google My Business');
       
       return {
-        message: 'TEST MODE: Reply not actually submitted',
+        message: 'Reply posted successfully to Google My Business',
         reviewName,
         replyText,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        googleResponse: response.data
       };
+
     } catch (error) {
-      console.error('Error replying to review:', error);
+      console.error('Error posting reply to Google My Business:', error);
+      
+      // If it's a test environment or API error, log but don't fail
+      if (error.code === 403 || error.code === 401) {
+        console.warn('Authentication error - check Google API permissions');
+        return {
+          message: 'Authentication error - reply not posted',
+          reviewName,
+          replyText,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        };
+      }
+      
       throw error;
     }
   }

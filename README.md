@@ -141,15 +141,24 @@ The app automatically runs every day at 9 PM NY time to:
 3. Generate casual, humble responses for approval
 4. Submit replies only after SMS confirmation
 
-## 🧪 Demo Mode
+## 🧪 Demo vs Production Mode
 
-By default, the app uses mock review data for testing and demonstration. This allows you to:
+The app supports both demo and production modes:
+
+### Demo Mode (`USE_MOCK_DATA=true`)
 - ✅ Test the complete SMS workflow
-- ✅ See how AI responses work
+- ✅ See how AI responses work  
 - ✅ Try the daily automation
 - ✅ Deploy without real Google reviews
+- ✅ Safe for development and testing
 
-Set `USE_MOCK_DATA=false` when you're ready to connect real Google My Business data.
+### Production Mode (`USE_MOCK_DATA=false`)
+- 🔴 Fetches **real reviews** from your Google My Business
+- 🔴 Posts **real replies** to Google (when approved)
+- 🔴 Requires proper Google API setup and permissions
+- 🔴 Use with caution - affects your actual business listing
+
+**To switch to real data:** Set `USE_MOCK_DATA=false` in your Railway environment variables.
 
 ## Environment Variables
 
