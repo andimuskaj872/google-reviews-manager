@@ -282,7 +282,6 @@ app.get('/health', (req, res) => {
 });
 
 // Schedule daily review workflow at 9 PM NY time (America/New_York timezone)
-// Temporarily set to every 2 minutes for testing: '*/2 * * * *'
 cron.schedule('0 21 * * *', runDailyReviewWorkflow, {
   timezone: 'America/New_York'
 });

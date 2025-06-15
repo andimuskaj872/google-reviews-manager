@@ -24,7 +24,6 @@
     "express": "^4.18.2",
     "googleapis": "^126.0.1",
     "node-cron": "^4.1.0",
-    "openai": "^4.28.0",
     "twilio": "^4.19.0"
   },
   "devDependencies": {

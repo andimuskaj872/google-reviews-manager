@@ -31,25 +31,6 @@ class SMSNotifier {
     }
   }
 
-  async sendNewReviewAlert(review) {
-    try {
-      const rating = '⭐'.repeat(review.starRating);
-      const message = `🔔 New Google Review!\n\nRating: ${rating} (${review.starRating}/5)\nReview: ${review.comment || 'No comment'}\nReviewer: ${review.reviewer?.displayName || 'Anonymous'}`;
-      
-      const result = await this.client.messages.create({
-        body: message,
-        from: this.fromNumber,
-        to: this.toNumber
-      });
-
-      console.log('New review alert sent:', result.sid);
-      return result;
-    } catch (error) {
-      console.error('Error sending new review alert:', error);
-      throw error;
-    }
-  }
-
   async sendReplyConfirmation(review, suggestedReply, confirmationId) {
     try {
       const rating = '⭐'.repeat(review.starRating);

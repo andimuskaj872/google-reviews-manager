@@ -17,8 +17,6 @@ class GoogleBusinessClient {
       });
     }
 
-    // Using the Business Profile API for reviews
-    this.businessprofile = google.businessprofileperformance('v1');
     this.locationId = process.env.LOCATION_ID;
   }
 
@@ -90,21 +88,6 @@ class GoogleBusinessClient {
     }
   }
 
-  async deleteReviewReply(reviewName) {
-    try {
-      const auth = this.oauth2Client;
-      const request = {
-        name: reviewName,
-        auth: auth
-      };
-
-      const response = await this.mybusiness.accounts.locations.reviews.deleteReply(request);
-      return response.data;
-    } catch (error) {
-      console.error('Error deleting review reply:', error);
-      throw error;
-    }
-  }
 }
 
 export default GoogleBusinessClient;
