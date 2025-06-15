@@ -1,6 +1,12 @@
-# Google Reviews Manager
+# 🌟 Google Reviews Manager
 
-A Node.js application to manage Google My Business reviews - fetch, respond, summarize, and send SMS notifications.
+> AI-powered Google My Business review management with automated SMS workflows
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
+[![Railway](https://img.shields.io/badge/Deploy-Railway-blueviolet.svg)](https://railway.app)
+
+A Node.js application that automatically manages Google My Business reviews using AI-powered responses, SMS notifications, and daily automation workflows.
 
 ## Features
 
@@ -167,6 +173,32 @@ npm run dev
 npm test
 ```
 
-## License
+## 🤝 Contributing
 
-MIT
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+### Areas for Contribution
+- 🔌 Real Google My Business API integration
+- 🎨 Web dashboard for review management  
+- 🧪 Unit tests and integration tests
+- 🐳 Docker deployment options
+- 📚 Documentation improvements
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built with [Claude](https://anthropic.com) for AI-powered review responses
+- [Twilio](https://twilio.com) for SMS notifications
+- [Railway](https://railway.app) for cloud deployment
+- [Google My Business API](https://developers.google.com/my-business) for review management
+
+## ⭐ Star This Repository
+
+If this project helped you, please give it a star! It helps others discover this tool.
+
+---
+
+**Made with ❤️ for business owners who care about customer feedback**
