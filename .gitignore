@@ -1,0 +1,10 @@
+node_modules/
+.env
+.DS_Store
+*.log
+coverage/
+.nyc_output/
+dist/
+build/
+credentials.json
+token.json
