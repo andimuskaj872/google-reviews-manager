@@ -52,18 +52,31 @@ class GoogleBusinessClient {
   // Use the CORRECT Google Business Information API for reviews
   // API Documentation: https://developers.google.com/my-business/reference/businessinformation/rest/?apix=true
   async getReviewsFromAPI() {
+    const timeout = 10000; // 10 second timeout
+    
     try {
       console.log('Using Google Business Information API for reviews...');
       
       // Ensure we have a fresh access token
+      console.log('Getting fresh access token...');
       await this.oauth2Client.getAccessToken();
       
       // Use the Business Information API to get location data including reviews
-      const response = await this.businessInfo.locations.get({
+      console.log('Making API call to locations.get with readMask=reviews...');
+      
+      const apiCall = this.businessInfo.locations.get({
         name: `locations/${this.locationId}`,
         auth: this.oauth2Client,
-        readMask: 'name,regularHours,reviews'
+        readMask: 'reviews'
       });
+      
+      // Add timeout to prevent hanging
+      const response = await Promise.race([
+        apiCall,
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('API call timeout after 10 seconds')), timeout)
+        )
+      ]);
       
       const reviews = response.data.reviews || [];
       console.log(`Successfully fetched ${reviews.length} reviews from Business Information API`);
@@ -72,23 +85,13 @@ class GoogleBusinessClient {
     } catch (error) {
       console.error('Business Information API error:', error.message);
       
-      // If quota exceeded, wait and retry once
-      if (error.message.includes('Quota exceeded')) {
-        console.log('Quota exceeded, waiting 30 seconds before retry...');
-        await new Promise(resolve => setTimeout(resolve, 30000));
-        
-        try {
-          const response = await this.businessInfo.locations.get({
-            name: `locations/${this.locationId}`,
-            auth: this.oauth2Client,
-            readMask: 'name,reviews'
-          });
-          
-          return response.data.reviews || [];
-        } catch (retryError) {
-          console.error('Retry also failed:', retryError.message);
-          throw retryError;
-        }
+      // Handle specific error types
+      if (error.message.includes('timeout')) {
+        throw new Error('API call timed out - the service may be slow or unavailable');
+      }
+      
+      if (error.message.includes('Quota exceeded') || error.message.includes('quota')) {
+        throw new Error('API quota exceeded - please wait a few minutes before trying again');
       }
       
       throw error;
