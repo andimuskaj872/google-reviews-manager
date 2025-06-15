@@ -169,23 +169,7 @@ The app supports both demo and production modes:
 
 ## Environment Variables
 
-```env
-# Google My Business API
-GOOGLE_CLIENT_ID=your_client_id
-GOOGLE_CLIENT_SECRET=your_client_secret
-GOOGLE_REDIRECT_URI=http://localhost:3000/auth/callback
-GOOGLE_REFRESH_TOKEN=your_refresh_token
-LOCATION_ID=your_business_location_id
-
-# Claude API
-ANTHROPIC_API_KEY=your_anthropic_api_key
-
-# Twilio SMS
-TWILIO_ACCOUNT_SID=your_account_sid
-TWILIO_AUTH_TOKEN=your_auth_token
-TWILIO_PHONE_NUMBER=your_twilio_number
-NOTIFICATION_PHONE_NUMBER=your_target_number
-```
+See the [`.env.example`](.env.example) file for all required environment variables and their descriptions. Copy this file to `.env` and fill in your actual values.
 
 ## Development
 
