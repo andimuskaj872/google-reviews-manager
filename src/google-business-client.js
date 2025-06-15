@@ -17,21 +17,14 @@ class GoogleBusinessClient {
       });
     }
 
-    // Try multiple API service names to find what works
+    // CORRECT API: Google Business Information API 
+    // Documentation: https://developers.google.com/my-business/reference/businessinformation/rest/?apix=true
+    // This is the definitive API for Google Business data including reviews
     try {
-      // These are the known Google Business APIs in the googleapis library
       this.businessInfo = google.mybusinessbusinessinformation('v1');
-      this.accountManagement = google.mybusinessaccountmanagement('v1');
-      
-      // Try the v4.9 API if it exists
-      try {
-        this.mybusinessv4 = google.mybusiness && google.mybusiness('v4');
-      } catch (e) {
-        console.log('mybusiness v4 not available');
-      }
-      
     } catch (error) {
-      console.warn('Business Profile APIs not available:', error.message);
+      console.error('Failed to initialize Google Business Information API:', error.message);
+      throw new Error('Google Business Information API not available');
     }
     
     this.locationId = process.env.LOCATION_ID;
@@ -56,42 +49,49 @@ class GoogleBusinessClient {
     return tokens;
   }
 
-  // Try using the Business Information API for reviews
+  // Use the CORRECT Google Business Information API for reviews
+  // API Documentation: https://developers.google.com/my-business/reference/businessinformation/rest/?apix=true
   async getReviewsFromAPI() {
     try {
-      console.log('Attempting to fetch reviews using Business Information API...');
+      console.log('Using Google Business Information API for reviews...');
       
-      // Try the Business Information API approach
-      const response = await this.businessInfo.locations.reviews.list({
-        parent: `locations/${this.locationId}`,
+      // Ensure we have a fresh access token
+      await this.oauth2Client.getAccessToken();
+      
+      // Use the Business Information API to get location data including reviews
+      const response = await this.businessInfo.locations.get({
+        name: `locations/${this.locationId}`,
         auth: this.oauth2Client,
-        pageSize: 50
+        readMask: 'name,regularHours,reviews'
       });
       
-      console.log('Business Info API response:', response.data);
-      return response.data.reviews || [];
+      const reviews = response.data.reviews || [];
+      console.log(`Successfully fetched ${reviews.length} reviews from Business Information API`);
+      return reviews;
       
     } catch (error) {
-      console.error('Business Info API failed:', error.message);
+      console.error('Business Information API error:', error.message);
       
-      // If that fails, try a direct approach without account ID
-      try {
-        console.log('Trying direct location reviews access...');
+      // If quota exceeded, wait and retry once
+      if (error.message.includes('Quota exceeded')) {
+        console.log('Quota exceeded, waiting 30 seconds before retry...');
+        await new Promise(resolve => setTimeout(resolve, 30000));
         
-        // Some APIs might work with just the location
-        const response = await this.businessInfo.locations.get({
-          name: `locations/${this.locationId}`,
-          auth: this.oauth2Client,
-          readMask: 'name,reviews'
-        });
-        
-        console.log('Direct location response:', response.data);
-        return response.data.reviews || [];
-        
-      } catch (error2) {
-        console.error('Direct location API also failed:', error2.message);
-        throw new Error(`All API approaches failed. Last error: ${error2.message}`);
+        try {
+          const response = await this.businessInfo.locations.get({
+            name: `locations/${this.locationId}`,
+            auth: this.oauth2Client,
+            readMask: 'name,reviews'
+          });
+          
+          return response.data.reviews || [];
+        } catch (retryError) {
+          console.error('Retry also failed:', retryError.message);
+          throw retryError;
+        }
       }
+      
+      throw error;
     }
   }
 
@@ -113,9 +113,8 @@ class GoogleBusinessClient {
           available: true,
           hasLocations: !!this.businessInfo.locations,
           locationsKeys: this.businessInfo.locations ? Object.keys(this.businessInfo.locations) : [],
-          locationsReviews: !!(this.businessInfo.locations?.reviews),
-          locationsReviewsList: !!(this.businessInfo.locations?.reviews?.list),
-          locationsGet: !!(this.businessInfo.locations?.get)
+          locationsGet: !!(this.businessInfo.locations?.get),
+          apiNote: 'Using Google Business Information API - the CORRECT API for reviews'
         };
       }
       
