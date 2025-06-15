@@ -16,8 +16,16 @@
     "api",
     "sms"
   ],
-  "author": "",
+  "author": "Google Reviews Manager Contributors",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andimuskaj872/google-reviews-manager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/andimuskaj872/google-reviews-manager/issues"
+  },
+  "homepage": "https://github.com/andimuskaj872/google-reviews-manager#readme",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.54.0",
     "dotenv": "^16.3.1",

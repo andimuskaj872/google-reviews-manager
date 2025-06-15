@@ -1,7 +1,6 @@
 import express from 'express';
 import cron from 'node-cron';
 import fs from 'fs/promises';
-import path from 'path';
 import GoogleBusinessClient from './google-business-client.js';
 import ReviewSummarizer from './review-summarizer.js';
 import SMSNotifier from './sms-notifier.js';
@@ -31,7 +30,7 @@ async function getLastCheckTimestamp() {
     const parsed = JSON.parse(data);
     return new Date(parsed.timestamp);
   } catch (error) {
-    console.log('No previous timestamp found, treating as first run');
+    // First run or file doesn't exist
     return null;
   }
 }
@@ -40,7 +39,6 @@ async function saveLastCheckTimestamp() {
   const timestamp = new Date().toISOString();
   try {
     await fs.writeFile(TIMESTAMP_FILE, JSON.stringify({ timestamp }));
-    console.log('Saved timestamp for next check:', timestamp);
   } catch (error) {
     console.error('Error saving timestamp:', error);
   }
@@ -53,12 +51,6 @@ async function runDailyReviewWorkflow() {
     
     // Get timestamp of last check
     const lastCheckTime = await getLastCheckTimestamp();
-    
-    if (lastCheckTime) {
-      console.log('Last check was at:', lastCheckTime.toISOString());
-    } else {
-      console.log('First time running - will check all recent reviews');
-    }
     
     // Get only new reviews since last check (for summary)
     const newReviews = await googleClient.getReviews(lastCheckTime);
