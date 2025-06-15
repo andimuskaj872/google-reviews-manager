@@ -349,13 +349,17 @@ app.get('/debug/reviews', async (req, res) => {
   try {
     console.log('=== DEBUG: Fetching reviews ===');
     
+    // Test what APIs are available
+    const availableAPIs = googleClient.testAvailableAPIs();
+    console.log('Available APIs:', availableAPIs);
+    
     // Test API connection directly
     let apiError = null;
     let realReviews = [];
     
     try {
-      console.log('Testing direct Google My Business API call...');
-      const response = await googleClient.businessInfo.locations.reviews.list({
+      console.log('Testing direct Google Business Info API call...');
+      const response = await googleClient.businessinfo.locations.reviews.list({
         parent: `locations/${process.env.LOCATION_ID}`,
         auth: googleClient.oauth2Client,
         pageSize: 50,
@@ -393,6 +397,7 @@ app.get('/debug/reviews', async (req, res) => {
       allReviews[0].comment?.includes('Amazing Chinese food! The Beijing duck');
     
     res.json({
+      availableAPIs,
       apiError,
       totalReviews: allReviews.length,
       realApiReviews: realReviews.length,

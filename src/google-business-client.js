@@ -17,9 +17,15 @@ class GoogleBusinessClient {
       });
     }
 
-    // Initialize Google My Business API client
-    this.mybusiness = google.mybusinessaccountmanagement('v1');
-    this.businessInfo = google.mybusinessbusinessinformation('v1');
+    // Try to initialize Google Business APIs
+    // The Google My Business API has been deprecated and replaced with different APIs
+    try {
+      this.mybusiness = google.mybusinessaccountmanagement('v1');
+      this.businessinfo = google.mybusinessbusinessinformation('v1'); 
+      this.businessprofile = google.businessprofileperformance('v1');
+    } catch (error) {
+      console.warn('Some Google Business APIs may not be available:', error.message);
+    }
     this.locationId = process.env.LOCATION_ID;
   }
 
@@ -41,6 +47,26 @@ class GoogleBusinessClient {
     return tokens;
   }
 
+  // Test which APIs are available
+  testAvailableAPIs() {
+    const apis = {};
+    
+    try {
+      apis.mybusiness = !!this.mybusiness;
+      apis.businessinfo = !!this.businessinfo;
+      apis.businessprofile = !!this.businessprofile;
+      
+      // Test if specific methods exist
+      apis.businessinfoReviews = !!(this.businessinfo?.locations?.reviews?.list);
+      apis.businessprofileReviews = !!(this.businessprofile?.locations?.reviews?.list);
+      
+    } catch (error) {
+      apis.error = error.message;
+    }
+    
+    return apis;
+  }
+
   async getReviews(sinceTimestamp = null) {
     try {
       // Use mock data if specified
@@ -49,10 +75,10 @@ class GoogleBusinessClient {
         return this.getMockReviews(sinceTimestamp);
       }
 
-      // Fetch real reviews from Google My Business API
-      console.log('Fetching real reviews from Google My Business...');
+      // Fetch real reviews from Google Business Info API
+      console.log('Fetching real reviews from Google Business Info API...');
       
-      const response = await this.businessInfo.locations.reviews.list({
+      const response = await this.businessinfo.locations.reviews.list({
         parent: `locations/${this.locationId}`,
         auth: this.oauth2Client,
         pageSize: 50, // Fetch up to 50 reviews
@@ -126,7 +152,7 @@ class GoogleBusinessClient {
       }
 
       // Fetch ALL reviews (for summary purposes)
-      const response = await this.businessInfo.locations.reviews.list({
+      const response = await this.businessinfo.locations.reviews.list({
         parent: `locations/${this.locationId}`,
         auth: this.oauth2Client,
         pageSize: 100, // More reviews for better summary
@@ -205,10 +231,10 @@ class GoogleBusinessClient {
         };
       }
 
-      // Post real reply to Google My Business
-      console.log('Posting real reply to Google My Business:', reviewName);
+      // Post real reply to Google Business Info
+      console.log('Posting real reply to Google Business Info:', reviewName);
       
-      const response = await this.businessInfo.locations.reviews.reply({
+      const response = await this.businessinfo.locations.reviews.reply({
         name: reviewName,
         auth: this.oauth2Client,
         requestBody: {
