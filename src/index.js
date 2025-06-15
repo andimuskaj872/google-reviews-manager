@@ -358,18 +358,14 @@ app.get('/debug/reviews', async (req, res) => {
     let realReviews = [];
     
     try {
-      console.log('Testing direct Google My Business v4 API call...');
+      console.log('Testing direct Google My Business v4 HTTP API call...');
       if (!process.env.GOOGLE_ACCOUNT_ID) {
         throw new Error('GOOGLE_ACCOUNT_ID environment variable is required');
       }
       
-      const response = await googleClient.mybusiness.accounts.locations.reviews.list({
-        parent: `accounts/${process.env.GOOGLE_ACCOUNT_ID}/locations/${process.env.LOCATION_ID}`,
-        auth: googleClient.oauth2Client,
-        pageSize: 50,
-        orderBy: 'updateTime desc'
-      });
-      realReviews = response.data.reviews || [];
+      const endpoint = `accounts/${process.env.GOOGLE_ACCOUNT_ID}/locations/${process.env.LOCATION_ID}/reviews?pageSize=50&orderBy=updateTime desc`;
+      const response = await googleClient.makeMyBusinessRequest(endpoint);
+      realReviews = response.reviews || [];
       console.log(`Direct API call successful: ${realReviews.length} reviews`);
     } catch (error) {
       apiError = {

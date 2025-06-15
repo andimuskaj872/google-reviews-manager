@@ -17,10 +17,10 @@ class GoogleBusinessClient {
       });
     }
 
-    // Initialize Google My Business API v4 (still active for reviews)
-    this.mybusiness = google.mybusiness('v4');
+    // Initialize for Google My Business API v4 (direct HTTP calls)
+    // The googleapis library doesn't have a direct mybusiness method
     this.locationId = process.env.LOCATION_ID;
-    this.accountId = process.env.GOOGLE_ACCOUNT_ID; // We'll need this for reviews
+    this.accountId = process.env.GOOGLE_ACCOUNT_ID;
   }
 
   async getAuthUrl() {
@@ -41,28 +41,42 @@ class GoogleBusinessClient {
     return tokens;
   }
 
-  // Test which APIs are available
+  // Make direct HTTP request to Google My Business API
+  async makeMyBusinessRequest(endpoint, options = {}) {
+    const baseUrl = 'https://mybusiness.googleapis.com/v4';
+    const url = `${baseUrl}/${endpoint}`;
+    
+    // Get access token
+    await this.oauth2Client.getAccessToken();
+    const token = this.oauth2Client.credentials.access_token;
+    
+    const response = await fetch(url, {
+      method: options.method || 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...options.headers
+      },
+      body: options.body ? JSON.stringify(options.body) : undefined
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+    
+    return response.json();
+  }
+
+  // Test API availability
   testAvailableAPIs() {
     const apis = {};
     
     try {
-      apis.mybusiness = !!this.mybusiness;
       apis.hasAccountId = !!this.accountId;
       apis.hasLocationId = !!this.locationId;
-      
-      // Test if the correct My Business v4 API methods exist
-      apis.reviewsEndpoint = !!(this.mybusiness?.accounts?.locations?.reviews?.list);
-      apis.replyEndpoint = !!(this.mybusiness?.accounts?.locations?.reviews?.updateReply);
-      
-      // Check My Business API structure
-      if (this.mybusiness) {
-        apis.mybusinessStructure = {
-          hasAccounts: !!this.mybusiness.accounts,
-          accountsKeys: this.mybusiness.accounts ? Object.keys(this.mybusiness.accounts) : [],
-          hasAccountsLocations: !!(this.mybusiness.accounts?.locations),
-          accountsLocationsKeys: this.mybusiness.accounts?.locations ? Object.keys(this.mybusiness.accounts.locations) : []
-        };
-      }
+      apis.hasOAuthClient = !!this.oauth2Client;
+      apis.hasRefreshToken = !!this.oauth2Client.credentials?.refresh_token;
       
     } catch (error) {
       apis.error = error.message;
@@ -86,14 +100,10 @@ class GoogleBusinessClient {
         throw new Error('GOOGLE_ACCOUNT_ID environment variable is required for reviews API');
       }
       
-      const response = await this.mybusiness.accounts.locations.reviews.list({
-        parent: `accounts/${this.accountId}/locations/${this.locationId}`,
-        auth: this.oauth2Client,
-        pageSize: 50, // Fetch up to 50 reviews
-        orderBy: 'updateTime desc' // Most recent first
-      });
+      const endpoint = `accounts/${this.accountId}/locations/${this.locationId}/reviews?pageSize=50&orderBy=updateTime desc`;
+      const response = await this.makeMyBusinessRequest(endpoint);
 
-      const allReviews = response.data.reviews || [];
+      const allReviews = response.reviews || [];
       console.log(`Fetched ${allReviews.length} total reviews from Google My Business`);
       
       // Filter by timestamp if provided (for new reviews since last run)
@@ -164,14 +174,10 @@ class GoogleBusinessClient {
         throw new Error('GOOGLE_ACCOUNT_ID environment variable is required for reviews API');
       }
       
-      const response = await this.mybusiness.accounts.locations.reviews.list({
-        parent: `accounts/${this.accountId}/locations/${this.locationId}`,
-        auth: this.oauth2Client,
-        pageSize: 100, // More reviews for better summary
-        orderBy: 'updateTime desc'
-      });
+      const endpoint = `accounts/${this.accountId}/locations/${this.locationId}/reviews?pageSize=100&orderBy=updateTime desc`;
+      const response = await this.makeMyBusinessRequest(endpoint);
 
-      const reviews = response.data.reviews || [];
+      const reviews = response.reviews || [];
       console.log(`Fetched ${reviews.length} total reviews for summary`);
       
       return reviews.map(review => ({
@@ -246,10 +252,13 @@ class GoogleBusinessClient {
       // Post real reply to Google My Business v4
       console.log('Posting real reply to Google My Business v4:', reviewName);
       
-      const response = await this.mybusiness.accounts.locations.reviews.updateReply({
-        name: reviewName,
-        auth: this.oauth2Client,
-        requestBody: {
+      // Extract review ID from the full review name
+      const reviewId = reviewName.split('/').pop();
+      const endpoint = `accounts/${this.accountId}/locations/${this.locationId}/reviews/${reviewId}/reply`;
+      
+      const response = await this.makeMyBusinessRequest(endpoint, {
+        method: 'PUT',
+        body: {
           comment: replyText
         }
       });
@@ -261,7 +270,7 @@ class GoogleBusinessClient {
         reviewName,
         replyText,
         timestamp: new Date().toISOString(),
-        googleResponse: response.data
+        googleResponse: response
       };
 
     } catch (error) {
